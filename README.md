@@ -31,7 +31,7 @@ manage_route53_records  = false  # default
 ## Prerequisites
 
 - AWS CLI configured
-- Terraform >= 1.9
+- Terraform **1.10.5** (see `.terraform-version`; required for S3 native state locking with `use_lockfile`)
 - An ECR image tag ready in `motorclub` (Git SHA; do **not** use `latest`)
 
 ## Bootstrap remote state (one time)
@@ -148,15 +148,12 @@ modules/edge      CloudFront, optional ACM/Route53, optional WAF
 modules/iam       ECS execution + task roles
 ```
 
-## Phase 5 CI/CD (planned)
+## CI/CD
 
-GitHub Actions in both repositories will:
+Phase 5 automation is documented in [docs/ci-cd.md](docs/ci-cd.md).
 
-- Build/push `motorclub-backend:$GITHUB_SHA` to ECR
-- Build frontend with `frontend_build_env` outputs
-- Sync S3 + invalidate CloudFront
-- `terraform apply -var backend_image_tag=$GITHUB_SHA`
-- Run migration ECS task, then wait for service stability
+- **Phase 5A (implemented):** Terraform fmt, validate, and plan via `.github/workflows/terraform-ci.yml`
+- **Later phases:** manually approved Terraform apply (infra only), application CI/deploy in `motorclub` — no Terraform on routine image deploys
 
 ## Secrets
 
