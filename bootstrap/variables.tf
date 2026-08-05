@@ -13,4 +13,5 @@ variable "project_name" {
 variable "state_bucket_name" {
   description = "Globally unique S3 bucket name for Terraform remote state"
   type        = string
+  default     = "motorclub-terraform-state"
 }
