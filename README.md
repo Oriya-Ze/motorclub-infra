@@ -140,12 +140,26 @@ If `manage_route53_records = false`, create ACM validation CNAMEs manually from 
 ## Module layout
 
 ```text
-modules/network   VPC, subnets, endpoints, security groups
-modules/database  RDS PostgreSQL, Secrets Manager
-modules/storage   Frontend + media S3 buckets
-modules/compute   ECR, ECS, ALB
-modules/edge      CloudFront, optional ACM/Route53, optional WAF
-modules/iam       ECS execution + task roles
+modules/network    VPC, subnets, endpoints, security groups
+modules/database   RDS PostgreSQL, Secrets Manager
+modules/storage    Frontend + media S3 buckets
+modules/compute    ECR, ECS, ALB
+modules/edge       CloudFront, optional ACM/Route53, optional WAF
+modules/iam        ECS execution + task roles
+modules/lambda_api Lambda container, API Gateway HTTP API, IAM
+modules/cognito    Cognito User Pool + app client
+```
+
+## Serverless stack (Lambda + Neon)
+
+Low-cost alternative (~$0–15/month). Separate state key and environment name — does not replace `environments/dev`.
+
+See [docs/serverless-neon.md](docs/serverless-neon.md) for Neon setup, Lambda image build, and deploy steps.
+
+```bash
+cd environments/serverless
+terraform init -backend-config=backend.hcl
+terraform apply
 ```
 
 ## CI/CD

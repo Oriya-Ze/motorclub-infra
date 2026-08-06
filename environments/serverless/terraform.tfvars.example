@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars and set secrets before apply.
+# Do not commit terraform.tfvars.
+
+aws_region         = "eu-west-1"
+project_name       = "motorclub"
+environment        = "serverless"
+lambda_image_tag   = "REPLACE_WITH_GIT_SHA"
+
+# Neon connection string (asyncpg + SSL required):
+# postgresql+asyncpg://USER:PASSWORD@HOST/DB?ssl=require
+database_url = "REPLACE_WITH_NEON_DATABASE_URL"
+
+enable_custom_domains  = false
+manage_route53_records = false
+allow_broad_media_cors = true
