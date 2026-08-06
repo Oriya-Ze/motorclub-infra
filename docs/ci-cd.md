@@ -67,9 +67,33 @@ The application role is shared initially; it may be split into separate backend/
 
 Trust policies must match **how each workflow authenticates**. Branch-scoped and environment-scoped jobs use different `sub` claim values — do not mix them without updating the role trust policy.
 
+### GitHub `sub` claim formats
+
+GitHub Actions OIDC tokens include a `sub` (subject) claim. GitHub may emit **either** of these formats for the same repository:
+
+| Format | Example (`main` branch push) |
+|--------|------------------------------|
+| Legacy (name only) | `repo:Oriya-Ze/motorclub-infra:ref:refs/heads/main` |
+| With owner/repo IDs | `repo:Oriya-Ze@189972747/motorclub-infra@1320294367:ref:refs/heads/main` |
+
+MotorClub `motorclub-infra` IDs (verified in CloudTrail, August 2026):
+
+- Owner: `Oriya-Ze@189972747`
+- Repository: `motorclub-infra@1320294367`
+
+Trust policies that match only the legacy format will fail with:
+
+```text
+Not authorized to perform sts:AssumeRoleWithWebIdentity
+```
+
+even when the role ARN, audience, and OIDC provider thumbprints are correct.
+
+To find the `sub` value for a failed run, inspect **CloudTrail** → `AssumeRoleWithWebIdentity` events, or enable debug logging on the `configure-aws-credentials` step and compare to the IAM role trust policy.
+
 ### Branch-scoped jobs (Phase 5A — `terraform-ci.yml`)
 
-Used by the `plan-dev` job. This workflow does **not** use the protected `dev` GitHub Environment, so the trust policy should allow the repository branch subject:
+Used by the `plan-dev` job. This workflow does **not** use the protected `dev` GitHub Environment. Allow **both** `sub` formats:
 
 ```json
 {
@@ -86,7 +110,10 @@ Used by the `plan-dev` job. This workflow does **not** use the protected `dev` G
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:Oriya-Ze/motorclub-infra:ref:refs/heads/main"
+          "token.actions.githubusercontent.com:sub": [
+            "repo:Oriya-Ze/motorclub-infra:*",
+            "repo:Oriya-Ze@189972747/motorclub-infra@1320294367:*"
+          ]
         }
       }
     }
@@ -94,47 +121,55 @@ Used by the `plan-dev` job. This workflow does **not** use the protected `dev` G
 }
 ```
 
-For pull requests from forks, GitHub OIDC tokens use a different subject; fork PR plans will not assume this role unless you add an explicit (carefully reviewed) trust rule. The initial implementation expects trusted PRs from the same repository only.
+For pull requests from forks, GitHub OIDC tokens use a different subject; fork PR plans will not assume this role unless you add an explicit (carefully reviewed) trust rule. Phase 5A does not run `plan-dev` on pull requests.
 
-Optional tightening for PR workflows from the same repo:
+Optional tightening for PR workflows from the same repo (not used in Phase 5A):
 
 ```text
 repo:Oriya-Ze/motorclub-infra:pull_request
+repo:Oriya-Ze@189972747/motorclub-infra@1320294367:pull_request
 ```
 
 Document any PR trust rules you add in IAM before enabling them.
 
 ### Environment-scoped jobs (Phase 5B apply, 5D/5E deploy)
 
-Workflows that set `environment: dev` receive this subject:
+Workflows that set `environment: dev` receive a subject such as:
 
 ```text
 repo:Oriya-Ze/motorclub-infra:environment:dev
+repo:Oriya-Ze@189972747/motorclub-infra@1320294367:environment:dev
 ```
 
-Example trust condition for **Terraform apply** (5B):
+Example trust condition for **Terraform apply** (5B) — allow both formats:
 
 ```json
-"StringEquals": {
-  "token.actions.githubusercontent.com:sub": "repo:Oriya-Ze/motorclub-infra:environment:dev"
+"StringLike": {
+  "token.actions.githubusercontent.com:sub": [
+    "repo:Oriya-Ze/motorclub-infra:environment:dev",
+    "repo:Oriya-Ze@189972747/motorclub-infra@1320294367:environment:dev"
+  ]
 }
 ```
 
-Example trust condition for **application deploy** (5D/5E) on `motorclub`:
+Example trust condition for **application deploy** (5D/5E) on `motorclub` — replace owner/repo IDs after the first failed or successful deploy (from CloudTrail):
 
 ```json
-"StringEquals": {
-  "token.actions.githubusercontent.com:sub": "repo:Oriya-Ze/motorclub:environment:dev"
+"StringLike": {
+  "token.actions.githubusercontent.com:sub": [
+    "repo:Oriya-Ze/motorclub:environment:dev",
+    "repo:Oriya-Ze@189972747/motorclub@REPO_ID:environment:dev"
+  ]
 }
 ```
 
 **Summary**
 
-| Workflow | GitHub Environment | OIDC `sub` (example) |
-|----------|-------------------|----------------------|
-| `terraform-ci.yml` → `plan-dev` | none (repo variables) | `repo:Oriya-Ze/motorclub-infra:ref:refs/heads/main` |
-| `terraform-apply-dev.yml` (5B) | `dev` | `repo:Oriya-Ze/motorclub-infra:environment:dev` |
-| Backend/frontend deploy (5D/5E) | `dev` | `repo:Oriya-Ze/motorclub:environment:dev` |
+| Workflow | GitHub Environment | OIDC `sub` (examples) |
+|----------|-------------------|------------------------|
+| `terraform-ci.yml` → `plan-dev` | none (repo variables) | `repo:Oriya-Ze/motorclub-infra:ref:refs/heads/main` **or** `repo:Oriya-Ze@189972747/motorclub-infra@1320294367:ref:refs/heads/main` |
+| `terraform-apply-dev.yml` (5B) | `dev` | `repo:Oriya-Ze/motorclub-infra:environment:dev` **or** `repo:Oriya-Ze@189972747/motorclub-infra@1320294367:environment:dev` |
+| Backend/frontend deploy (5D/5E) | `dev` | `repo:Oriya-Ze/motorclub:environment:dev` **or** ID-qualified equivalent |
 
 ---
 
@@ -298,14 +333,15 @@ If migration fails, the running service stays on the previous task-definition re
 
 | Symptom | Likely cause |
 |---------|----------------|
-| `Not authorized to perform sts:AssumeRoleWithWebIdentity` | Role trust `sub` or `aud` does not match the workflow (branch vs environment) |
+| `Not authorized to perform sts:AssumeRoleWithWebIdentity` | Role trust `sub` or `aud` does not match the workflow (branch vs environment, or legacy vs ID-qualified `sub`) |
+| OIDC fails on `main` with correct role ARN | Trust policy matches `repo:OWNER/REPO:*` but GitHub sends `repo:OWNER@ID/REPO@ID:*` — add both formats |
 | Works on `main` but not on PR | Trust policy missing `pull_request` subject or fork PR from untrusted repo |
 | `AccessDenied` on S3 state | Role lacks state bucket/key permissions or lockfile object access |
 | Plan fails: missing variables | Set all repository variables listed for Phase 5A |
 | `use_lockfile` error | Terraform version below 1.10 — use pinned 1.10.5 |
 | Init fails: bucket does not exist | Run bootstrap (`bootstrap/`) before first remote plan |
 
-Verify the OIDC token subject in the workflow log (GitHub → job → "Configure AWS credentials") and compare to the IAM role trust policy.
+Verify the OIDC token subject in CloudTrail (`AssumeRoleWithWebIdentity` → `userName`) or in the workflow log, and compare to the IAM role trust policy.
 
 ---
 
