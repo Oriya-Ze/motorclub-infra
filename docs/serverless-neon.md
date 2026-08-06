@@ -42,9 +42,11 @@ From the `motorclub` repo:
 ```bash
 cd backend
 export DATABASE_URL="postgresql+asyncpg://USER:PASSWORD@HOST/DB?ssl=require"
-export ENVIRONMENT=dev
+export ENVIRONMENT=local
 alembic upgrade head
 ```
+
+Use `ENVIRONMENT=local` when running migrations from your laptop (only `DATABASE_URL` is needed). Do not set `ENVIRONMENT=dev` unless you also provide `BACKEND_CORS_ORIGINS` and other production env vars.
 
 Migrations run **outside** Lambda (CI, laptop, or GitHub Actions). Do not run Alembic on every cold start.
 
