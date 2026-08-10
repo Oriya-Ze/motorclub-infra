@@ -24,6 +24,14 @@ output "google_oauth_enabled" {
   value = local.enable_google_oauth
 }
 
+output "ses_email_enabled" {
+  value = var.enable_ses_email
+}
+
+output "ses_from_email_address" {
+  value = var.enable_ses_email ? var.from_email_address : ""
+}
+
 output "cognito_hosted_ui_base_url" {
   description = "Base URL for Cognito Hosted UI / OAuth endpoints"
   value = local.enable_google_oauth ? "https://${aws_cognito_user_pool_domain.main[0].domain}.auth.${data.aws_region.current.id}.amazoncognito.com" : ""

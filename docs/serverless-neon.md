@@ -163,27 +163,22 @@ Set automatically by Terraform (`modules/lambda_api` + `modules/cognito`):
 
 Forgot password uses Cognito's built-in flow (`/auth/forgot-password`, `/auth/reset-password`).
 
-Email is sent via **`COGNITO_DEFAULT`** (~50 emails/day, generic sender). This is intentional for early access; no SES setup required now.
+Email is sent via **Amazon SES** from `noreply@motorclub.co.il` when custom domains are enabled (`enable_custom_domains = true` in Terraform). Cognito handles verification codes and password-reset emails automatically.
 
-### Later: switch to SES + `motorclub.co.il`
+### SES setup (production)
 
-When you are ready (before a wide public launch):
+Terraform in `modules/cognito/ses.tf` creates:
 
-1. Verify `motorclub.co.il` in Amazon SES (DNS: SPF, DKIM).
-2. Request SES production access (exit sandbox).
-3. In `modules/cognito/main.tf`, change `email_configuration` to:
+1. SES domain identity for `motorclub.co.il`
+2. Route 53 TXT + DKIM CNAME records (when `manage_route53_records = true`)
+3. IAM policy allowing Cognito to send via SES
+4. Cognito `email_configuration` with `from_email_address = "noreply@motorclub.co.il"`
 
-   ```hcl
-   email_configuration {
-     email_sending_account = "DEVELOPER"
-     source_arn            = aws_ses_domain_identity.main.arn
-     from_email_address    = "noreply@motorclub.co.il"
-   }
-   ```
+**Before wide launch:** request [SES production access](https://docs.aws.amazon.com/ses/latest/dg/request-production-access.html) to exit the sandbox (required to email arbitrary user addresses).
 
-4. `terraform apply` — existing users stay in Cognito; only the sender changes.
+Optionally add SPF on the root domain: `v=spf1 include:amazonses.com ~all`
 
-No backend or frontend code changes are required for the SES switch.
+No backend or frontend code changes are required for email delivery.
 
 ## Updating the API
 

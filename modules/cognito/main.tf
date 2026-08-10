@@ -34,25 +34,22 @@ resource "aws_cognito_user_pool" "main" {
       name     = "verified_email"
       priority = 1
     }
-    recovery_mechanism {
-      name     = "verified_phone_number"
-      priority = 2
+  }
+
+  dynamic "email_configuration" {
+    for_each = var.enable_ses_email ? [1] : []
+    content {
+      email_sending_account = "DEVELOPER"
+      source_arn            = aws_ses_domain_identity.main[0].arn
+      from_email_address    = var.from_email_address
     }
   }
 
-  sms_configuration {
-    external_id    = "${local.name_prefix}-cognito-sms"
-    sns_caller_arn = aws_iam_role.cognito_sms.arn
-  }
-
-  lambda_config {
-    create_auth_challenge          = aws_lambda_function.sms_auth.arn
-    define_auth_challenge          = aws_lambda_function.sms_auth.arn
-    verify_auth_challenge_response = aws_lambda_function.sms_auth.arn
-  }
-
-  email_configuration {
-    email_sending_account = "COGNITO_DEFAULT"
+  dynamic "email_configuration" {
+    for_each = var.enable_ses_email ? [] : [1]
+    content {
+      email_sending_account = "COGNITO_DEFAULT"
+    }
   }
 
   verification_message_template {
@@ -98,6 +95,7 @@ resource "aws_cognito_user_pool" "main" {
     }
   }
 
+  # Kept for Cognito compatibility (schema attributes cannot be removed once added).
   schema {
     name                     = "phone_number"
     attribute_data_type      = "String"
@@ -152,7 +150,6 @@ resource "aws_cognito_user_pool_client" "api" {
   explicit_auth_flows = [
     "ALLOW_USER_PASSWORD_AUTH",
     "ALLOW_REFRESH_TOKEN_AUTH",
-    "ALLOW_CUSTOM_AUTH",
   ]
 
   prevent_user_existence_errors = "ENABLED"
@@ -169,14 +166,12 @@ resource "aws_cognito_user_pool_client" "api" {
     "email",
     "name",
     "preferred_username",
-    "phone_number",
   ]
 
   write_attributes = [
     "email",
     "name",
     "preferred_username",
-    "phone_number",
   ]
 
   depends_on = [aws_cognito_identity_provider.google]

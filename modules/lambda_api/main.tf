@@ -39,9 +39,6 @@ data "aws_iam_policy_document" "lambda_cognito" {
       "cognito-idp:ConfirmForgotPassword",
       "cognito-idp:ChangePassword",
       "cognito-idp:AdminGetUser",
-      "cognito-idp:AdminCreateUser",
-      "cognito-idp:AdminSetUserPassword",
-      "cognito-idp:RespondToAuthChallenge",
     ]
     resources = [var.cognito_user_pool_arn]
   }

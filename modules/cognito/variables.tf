@@ -54,3 +54,33 @@ variable "extra_oauth_logout_urls" {
   type        = list(string)
   default     = []
 }
+
+variable "enable_ses_email" {
+  description = "Send Cognito verification and password emails via Amazon SES"
+  type        = bool
+  default     = false
+}
+
+variable "email_domain" {
+  description = "Domain verified in SES for outbound email"
+  type        = string
+  default     = ""
+}
+
+variable "from_email_address" {
+  description = "From address for Cognito emails (must be on email_domain)"
+  type        = string
+  default     = ""
+}
+
+variable "route53_hosted_zone_id" {
+  description = "Route 53 zone for SES verification and DKIM records"
+  type        = string
+  default     = null
+}
+
+variable "manage_route53_records" {
+  description = "Create SES DNS records in Route 53 automatically"
+  type        = bool
+  default     = false
+}

@@ -145,6 +145,12 @@ module "cognito" {
   google_client_secret      = var.google_oauth_client_secret
   extra_oauth_callback_urls = ["${module.edge.frontend_url}/auth/callback"]
   extra_oauth_logout_urls   = [module.edge.frontend_url]
+
+  enable_ses_email         = var.enable_custom_domains
+  email_domain             = var.domain_name
+  from_email_address       = "noreply@${var.domain_name}"
+  route53_hosted_zone_id   = local.route53_zone_id
+  manage_route53_records   = var.manage_route53_records
 }
 
 module "lambda_api" {
