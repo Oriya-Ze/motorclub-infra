@@ -1,6 +1,6 @@
 variable "aws_region" {
   type    = string
-  default = "eu-west-1"
+  default = "eu-central-1"
 }
 
 variable "project_name" {
@@ -39,6 +39,12 @@ variable "route53_hosted_zone_id" {
   default = null
 }
 
+variable "create_route53_zone" {
+  description = "Create a new Route 53 hosted zone for domain_name (use when the zone does not exist yet)"
+  type        = bool
+  default     = false
+}
+
 variable "domain_name" {
   type    = string
   default = "motorclub.co.il"
@@ -52,6 +58,11 @@ variable "frontend_custom_domains" {
 variable "media_custom_domain" {
   type    = string
   default = "media.motorclub.co.il"
+}
+
+variable "api_custom_domain" {
+  type    = string
+  default = "api.motorclub.co.il"
 }
 
 variable "enable_waf" {
@@ -75,9 +86,29 @@ variable "lambda_timeout" {
   default = 30
 }
 
+variable "cognito_domain_prefix" {
+  description = "Globally unique Cognito Hosted UI domain prefix for OAuth (defaults to project-environment in module)"
+  type        = string
+  default     = ""
+}
+
+variable "google_oauth_client_id" {
+  description = "Google OAuth client ID for Cognito Google sign-in"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "google_oauth_client_secret" {
+  description = "Google OAuth client secret for Cognito Google sign-in"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 check "route53_hosted_zone_required" {
   assert {
-    condition     = !var.manage_route53_records || (var.route53_hosted_zone_id != null && var.route53_hosted_zone_id != "")
-    error_message = "route53_hosted_zone_id must be set when manage_route53_records is true."
+    condition = !var.manage_route53_records || var.create_route53_zone || (var.route53_hosted_zone_id != null && var.route53_hosted_zone_id != "")
+    error_message = "Set create_route53_zone=true or route53_hosted_zone_id when manage_route53_records is true."
   }
 }

@@ -80,14 +80,14 @@ Push **before** the first `terraform apply` (Lambda needs an image in ECR).
 ```bash
 cd motorclub
 GIT_SHA=$(git rev-parse --short HEAD)
-AWS_REGION=eu-west-1
+AWS_REGION=eu-central-1
 
 # After first init/apply you can read this from Terraform output:
 ECR_URL=$(terraform -chdir=../motorclub-infra/environments/serverless output -raw ecr_api_repository_url 2>/dev/null || echo "")
 
 if [ -z "$ECR_URL" ]; then
   # First-time: create ECR repo manually or run terraform apply -target=aws_ecr_repository.api
-  ECR_URL="376129883917.dkr.ecr.eu-west-1.amazonaws.com/motorclub-api-lambda"
+  ECR_URL="240401023776.dkr.ecr.eu-central-1.amazonaws.com/motorclub-api-lambda"
 fi
 
 aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "${ECR_URL%/*}"

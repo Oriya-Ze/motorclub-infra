@@ -1,6 +1,6 @@
 bucket       = "motorclub-terraform-state-ACCOUNT_ID"
 key          = "dev/terraform.tfstate"
-region       = "eu-west-1"
+region       = "eu-central-1"
 encrypt      = true
 # Requires Terraform 1.10+ (see .terraform-version)
 use_lockfile = true

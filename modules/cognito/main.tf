@@ -1,5 +1,8 @@
 locals {
-  name_prefix = "${var.project_name}-${var.environment}"
+  name_prefix          = "${var.project_name}-${var.environment}"
+  enable_google_oauth  = var.google_client_id != "" && var.google_client_secret != ""
+  oauth_callback_urls  = distinct(concat(var.oauth_callback_urls, var.extra_oauth_callback_urls))
+  oauth_logout_urls    = distinct(concat(var.oauth_logout_urls, var.extra_oauth_logout_urls))
   common_tags = merge(var.tags, {
     Project     = "MotorClub"
     Environment = var.environment
@@ -31,6 +34,21 @@ resource "aws_cognito_user_pool" "main" {
       name     = "verified_email"
       priority = 1
     }
+    recovery_mechanism {
+      name     = "verified_phone_number"
+      priority = 2
+    }
+  }
+
+  sms_configuration {
+    external_id    = "${local.name_prefix}-cognito-sms"
+    sns_caller_arn = aws_iam_role.cognito_sms.arn
+  }
+
+  lambda_config {
+    create_auth_challenge          = aws_lambda_function.sms_auth.arn
+    define_auth_challenge          = aws_lambda_function.sms_auth.arn
+    verify_auth_challenge_response = aws_lambda_function.sms_auth.arn
   }
 
   email_configuration {
@@ -80,9 +98,49 @@ resource "aws_cognito_user_pool" "main" {
     }
   }
 
+  schema {
+    name                     = "phone_number"
+    attribute_data_type      = "String"
+    required                 = false
+    mutable                  = true
+    developer_only_attribute = false
+
+    string_attribute_constraints {
+      min_length = 0
+      max_length = 20
+    }
+  }
+
   tags = merge(local.common_tags, {
     Name = "${local.name_prefix}-users"
   })
+}
+
+resource "aws_cognito_user_pool_domain" "main" {
+  count        = local.enable_google_oauth ? 1 : 0
+  domain       = var.cognito_domain_prefix != "" ? var.cognito_domain_prefix : local.name_prefix
+  user_pool_id = aws_cognito_user_pool.main.id
+}
+
+resource "aws_cognito_identity_provider" "google" {
+  count = local.enable_google_oauth ? 1 : 0
+
+  user_pool_id  = aws_cognito_user_pool.main.id
+  provider_name = "Google"
+  provider_type = "Google"
+
+  provider_details = {
+    authorize_scopes = "email openid profile"
+    client_id        = var.google_client_id
+    client_secret    = var.google_client_secret
+  }
+
+  attribute_mapping = {
+    email              = "email"
+    name               = "name"
+    preferred_username = "email"
+    username           = "sub"
+  }
 }
 
 resource "aws_cognito_user_pool_client" "api" {
@@ -94,20 +152,32 @@ resource "aws_cognito_user_pool_client" "api" {
   explicit_auth_flows = [
     "ALLOW_USER_PASSWORD_AUTH",
     "ALLOW_REFRESH_TOKEN_AUTH",
+    "ALLOW_CUSTOM_AUTH",
   ]
 
   prevent_user_existence_errors = "ENABLED"
-  supported_identity_providers  = ["COGNITO"]
+  supported_identity_providers  = local.enable_google_oauth ? ["COGNITO", "Google"] : ["COGNITO"]
+
+  callback_urls = local.enable_google_oauth ? local.oauth_callback_urls : null
+  logout_urls   = local.enable_google_oauth ? local.oauth_logout_urls : null
+
+  allowed_oauth_flows_user_pool_client = local.enable_google_oauth
+  allowed_oauth_flows                  = local.enable_google_oauth ? ["code"] : []
+  allowed_oauth_scopes                 = local.enable_google_oauth ? ["openid", "email", "profile"] : []
 
   read_attributes = [
     "email",
     "name",
     "preferred_username",
+    "phone_number",
   ]
 
   write_attributes = [
     "email",
     "name",
     "preferred_username",
+    "phone_number",
   ]
+
+  depends_on = [aws_cognito_identity_provider.google]
 }

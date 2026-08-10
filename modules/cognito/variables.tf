@@ -10,3 +10,47 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+variable "cognito_domain_prefix" {
+  description = "Cognito Hosted UI domain prefix (must be globally unique). Defaults to project-environment."
+  type        = string
+  default     = ""
+}
+
+variable "google_client_id" {
+  description = "Google OAuth 2.0 client ID for Cognito federated sign-in"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "google_client_secret" {
+  description = "Google OAuth 2.0 client secret for Cognito federated sign-in"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "oauth_callback_urls" {
+  description = "App OAuth callback URLs registered on the Cognito app client"
+  type        = list(string)
+  default     = ["http://localhost:5173/auth/callback"]
+}
+
+variable "oauth_logout_urls" {
+  description = "App logout redirect URLs for the Cognito app client"
+  type        = list(string)
+  default     = ["http://localhost:5173"]
+}
+
+variable "extra_oauth_callback_urls" {
+  description = "Additional OAuth callback URLs (e.g. CloudFront frontend URL)"
+  type        = list(string)
+  default     = []
+}
+
+variable "extra_oauth_logout_urls" {
+  description = "Additional logout URLs"
+  type        = list(string)
+  default     = []
+}

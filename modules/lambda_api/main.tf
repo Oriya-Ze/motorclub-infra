@@ -38,6 +38,10 @@ data "aws_iam_policy_document" "lambda_cognito" {
       "cognito-idp:ForgotPassword",
       "cognito-idp:ConfirmForgotPassword",
       "cognito-idp:ChangePassword",
+      "cognito-idp:AdminGetUser",
+      "cognito-idp:AdminCreateUser",
+      "cognito-idp:AdminSetUserPassword",
+      "cognito-idp:RespondToAuthChallenge",
     ]
     resources = [var.cognito_user_pool_arn]
   }
@@ -70,9 +74,10 @@ locals {
       UPLOAD_DIR                        = "/tmp/uploads"
     },
     var.auth_provider == "cognito" ? {
-      COGNITO_USER_POOL_ID = var.cognito_user_pool_id
-      COGNITO_CLIENT_ID    = var.cognito_client_id
+      COGNITO_USER_POOL_ID  = var.cognito_user_pool_id
+      COGNITO_CLIENT_ID     = var.cognito_client_id
       COGNITO_CLIENT_SECRET = var.cognito_client_secret
+      COGNITO_DOMAIN        = var.cognito_domain != null ? var.cognito_domain : ""
     } : {
       JWT_SECRET         = var.jwt_secret
       JWT_ALGORITHM      = "HS256"
@@ -186,4 +191,28 @@ resource "aws_lambda_permission" "apigw" {
   function_name = aws_lambda_function.api.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
+}
+
+resource "aws_apigatewayv2_domain_name" "api" {
+  count = var.enable_api_custom_domain ? 1 : 0
+
+  domain_name = var.api_custom_domain
+
+  domain_name_configuration {
+    certificate_arn = var.api_certificate_arn
+    endpoint_type   = "REGIONAL"
+    security_policy = "TLS_1_2"
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name_prefix}-api-domain"
+  })
+}
+
+resource "aws_apigatewayv2_api_mapping" "api" {
+  count = var.enable_api_custom_domain ? 1 : 0
+
+  api_id      = aws_apigatewayv2_api.http.id
+  domain_name = aws_apigatewayv2_domain_name.api[0].id
+  stage       = aws_apigatewayv2_stage.default.name
 }

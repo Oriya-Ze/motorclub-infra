@@ -55,6 +55,15 @@ output "ecr_api_repository_url" {
   value = aws_ecr_repository.api.repository_url
 }
 
+output "cognito_hosted_ui_base_url" {
+  value = nonsensitive(module.cognito.cognito_hosted_ui_base_url)
+}
+
+output "google_oauth_enabled" {
+  value     = nonsensitive(module.cognito.google_oauth_enabled)
+  sensitive = false
+}
+
 output "frontend_build_env" {
   description = "Suggested build-time environment variables for the motorclub frontend"
   value = {
@@ -63,7 +72,29 @@ output "frontend_build_env" {
   }
 }
 
+output "route53_hosted_zone_id" {
+  description = "Route 53 hosted zone ID used for DNS records"
+  value       = local.route53_zone_id
+}
+
+output "route53_name_servers" {
+  description = "Update your domain registrar to use these nameservers when create_route53_zone=true"
+  value       = var.create_route53_zone ? aws_route53_zone.main[0].name_servers : []
+}
+
 output "cloudfront_certificate_validation_records" {
   description = "Manual DNS records for ACM when manage_route53_records=false"
   value       = module.edge.cloudfront_certificate_validation_options
+}
+
+output "api_certificate_validation_records" {
+  description = "Manual DNS records for regional API ACM when manage_route53_records=false"
+  value = var.enable_custom_domains ? [
+    for dvo in aws_acm_certificate.api[0].domain_validation_options : {
+      domain_name = dvo.domain_name
+      name        = dvo.resource_record_name
+      type        = dvo.resource_record_type
+      value       = dvo.resource_record_value
+    }
+  ] : []
 }

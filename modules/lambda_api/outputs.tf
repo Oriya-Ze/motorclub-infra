@@ -21,5 +21,18 @@ output "lambda_role_arn" {
 
 output "api_url" {
   description = "API base URL for frontend configuration"
-  value       = trimsuffix(aws_apigatewayv2_stage.default.invoke_url, "/")
+  value = var.enable_api_custom_domain && var.api_custom_domain != null ? "https://${var.api_custom_domain}" : trimsuffix(
+    aws_apigatewayv2_stage.default.invoke_url,
+    "/"
+  )
+}
+
+output "api_domain_target_domain_name" {
+  description = "API Gateway regional domain target for Route53 alias records"
+  value       = try(aws_apigatewayv2_domain_name.api[0].domain_name_configuration[0].target_domain_name, null)
+}
+
+output "api_domain_hosted_zone_id" {
+  description = "Route53 hosted zone ID for API Gateway regional domain alias records"
+  value       = try(aws_apigatewayv2_domain_name.api[0].domain_name_configuration[0].hosted_zone_id, null)
 }

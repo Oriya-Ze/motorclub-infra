@@ -56,6 +56,12 @@ variable "cognito_client_secret" {
   default   = null
 }
 
+variable "cognito_domain" {
+  description = "Cognito Hosted UI domain prefix for OAuth (empty when disabled)"
+  type        = string
+  default     = ""
+}
+
 variable "backend_cors_origins" {
   type = string
 }
@@ -91,4 +97,22 @@ variable "app_version" {
 variable "tags" {
   type    = map(string)
   default = {}
+}
+
+variable "api_custom_domain" {
+  description = "Custom domain for the HTTP API (e.g. api.motorclub.co.il)"
+  type        = string
+  default     = null
+}
+
+variable "enable_api_custom_domain" {
+  description = "Create API Gateway custom domain mapping"
+  type        = bool
+  default     = false
+}
+
+variable "api_certificate_arn" {
+  description = "Validated ACM certificate ARN in the API region for api_custom_domain"
+  type        = string
+  default     = null
 }

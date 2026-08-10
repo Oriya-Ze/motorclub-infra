@@ -1,7 +1,7 @@
 # Copy to terraform.tfvars and set backend_image_tag before apply.
 # Do not commit terraform.tfvars.
 
-aws_region        = "eu-west-1"
+aws_region        = "eu-central-1"
 project_name      = "motorclub"
 environment       = "dev"
 backend_image_tag = "REPLACE_WITH_GIT_SHA"

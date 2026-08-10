@@ -214,7 +214,7 @@ Configure under **Settings → Secrets and variables → Actions → Variables**
 
 | Variable | Example | Purpose |
 |----------|---------|---------|
-| `AWS_REGION` | `eu-west-1` | AWS region |
+| `AWS_REGION` | `eu-central-1` | AWS region |
 | `AWS_TERRAFORM_ROLE_ARN` | `arn:aws:iam::123456789012:role/motorclub-github-terraform-dev` | OIDC role for Terraform CI |
 | `TF_STATE_BUCKET` | `motorclub-terraform-state-123456789012` | Remote state bucket |
 | `TF_STATE_KEY` | `dev/terraform.tfstate` | State object key |

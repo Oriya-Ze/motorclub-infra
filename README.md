@@ -65,7 +65,7 @@ cd ../motorclub
 GIT_SHA=$(git rev-parse --short HEAD)
 ECR_URL=$(terraform -chdir=../motorclub-infra/environments/dev output -raw ecr_backend_repository_url)
 
-aws ecr get-login-password --region eu-west-1 | docker login --username AWS --password-stdin "${ECR_URL%/*}"
+aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin "${ECR_URL%/*}"
 docker build -t "${ECR_URL}:${GIT_SHA}" ./backend
 docker push "${ECR_URL}:${GIT_SHA}"
 ```
