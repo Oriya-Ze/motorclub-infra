@@ -69,6 +69,7 @@ locals {
       MAX_IMAGE_UPLOAD_BYTES            = "10485760"
       MAX_VIDEO_UPLOAD_BYTES            = "10485760"
       UPLOAD_DIR                        = "/tmp/uploads"
+      RATE_LIMIT_TABLE                  = aws_dynamodb_table.rate_limit.name
     },
     var.auth_provider == "cognito" ? {
       COGNITO_USER_POOL_ID  = var.cognito_user_pool_id
@@ -81,6 +82,45 @@ locals {
       JWT_EXPIRE_MINUTES = "1440"
     }
   )
+}
+
+resource "aws_dynamodb_table" "rate_limit" {
+  name         = "${local.name_prefix}-rate-limit"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "pk"
+
+  attribute {
+    name = "pk"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "expires_at"
+    enabled        = true
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${local.name_prefix}-rate-limit"
+  })
+}
+
+data "aws_iam_policy_document" "lambda_rate_limit" {
+  statement {
+    sid    = "RateLimitTableAccess"
+    effect = "Allow"
+    actions = [
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+    ]
+    resources = [aws_dynamodb_table.rate_limit.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "lambda_rate_limit" {
+  name   = "${local.name_prefix}-api-lambda-rate-limit"
+  role   = aws_iam_role.lambda.id
+  policy = data.aws_iam_policy_document.lambda_rate_limit.json
 }
 
 resource "aws_iam_role" "lambda" {

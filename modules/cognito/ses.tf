@@ -28,6 +28,24 @@ resource "aws_route53_record" "ses_dkim" {
   records = ["${aws_ses_domain_dkim.main[0].dkim_tokens[count.index]}.dkim.amazonses.com"]
 }
 
+resource "aws_route53_record" "spf" {
+  count   = var.enable_ses_email && var.manage_route53_records ? 1 : 0
+  zone_id = var.route53_hosted_zone_id
+  name    = var.email_domain
+  type    = "TXT"
+  ttl     = 600
+  records = ["v=spf1 include:amazonses.com ~all"]
+}
+
+resource "aws_route53_record" "dmarc" {
+  count   = var.enable_ses_email && var.manage_route53_records ? 1 : 0
+  zone_id = var.route53_hosted_zone_id
+  name    = "_dmarc.${var.email_domain}"
+  type    = "TXT"
+  ttl     = 600
+  records = ["v=DMARC1; p=none; rua=mailto:${var.from_email_address}"]
+}
+
 resource "aws_ses_identity_policy" "cognito" {
   count    = var.enable_ses_email ? 1 : 0
   identity = aws_ses_domain_identity.main[0].arn
