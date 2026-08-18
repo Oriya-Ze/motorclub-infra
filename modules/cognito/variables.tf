@@ -61,6 +61,36 @@ variable "enable_ses_email" {
   default     = false
 }
 
+variable "enable_resend_email" {
+  description = "Send Cognito verification and password emails via Resend (Custom Email Sender Lambda)"
+  type        = bool
+  default     = false
+}
+
+variable "resend_secret_name" {
+  description = "AWS Secrets Manager secret name/ARN containing the Resend API key"
+  type        = string
+  default     = "motorclub/prod/resend"
+}
+
+variable "from_name" {
+  description = "Display name for outbound auth emails"
+  type        = string
+  default     = "MotorClub"
+}
+
+variable "app_name" {
+  description = "Application name used in auth email templates"
+  type        = string
+  default     = "MotorClub"
+}
+
+variable "app_url" {
+  description = "Application URL linked from auth emails"
+  type        = string
+  default     = "https://motorclub.co.il"
+}
+
 variable "email_domain" {
   description = "Domain verified in SES for outbound email"
   type        = string

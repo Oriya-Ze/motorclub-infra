@@ -24,6 +24,18 @@ variable "database_url" {
   sensitive   = true
 }
 
+variable "enable_resend_email" {
+  description = "Send Cognito auth emails via Resend (Custom Email Sender Lambda) instead of SES"
+  type        = bool
+  default     = true
+}
+
+variable "resend_secret_name" {
+  description = "Secrets Manager name for Resend API key"
+  type        = string
+  default     = "motorclub/prod/resend"
+}
+
 variable "enable_custom_domains" {
   type    = bool
   default = false

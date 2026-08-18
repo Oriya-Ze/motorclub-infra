@@ -1,2 +1,4 @@
 *.zip
 ses_events.zip
+resend_email.zip
+resend_email/build/

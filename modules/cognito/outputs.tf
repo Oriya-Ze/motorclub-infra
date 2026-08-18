@@ -28,8 +28,20 @@ output "ses_email_enabled" {
   value = var.enable_ses_email
 }
 
+output "resend_email_enabled" {
+  value = var.enable_resend_email
+}
+
 output "ses_from_email_address" {
-  value = var.enable_ses_email ? var.from_email_address : ""
+  value = var.enable_ses_email ? var.from_email_address : (var.enable_resend_email ? var.from_email_address : "")
+}
+
+output "resend_email_lambda_arn" {
+  value = var.enable_resend_email ? aws_lambda_function.resend_email[0].arn : ""
+}
+
+output "cognito_email_kms_key_arn" {
+  value = var.enable_resend_email ? aws_kms_key.cognito_email[0].arn : ""
 }
 
 output "cognito_hosted_ui_base_url" {

@@ -37,7 +37,7 @@ resource "aws_cognito_user_pool" "main" {
   }
 
   dynamic "email_configuration" {
-    for_each = var.enable_ses_email ? [1] : []
+    for_each = var.enable_ses_email && !var.enable_resend_email ? [1] : []
     content {
       email_sending_account = "DEVELOPER"
       source_arn            = aws_ses_domain_identity.main[0].arn
@@ -46,9 +46,20 @@ resource "aws_cognito_user_pool" "main" {
   }
 
   dynamic "email_configuration" {
-    for_each = var.enable_ses_email ? [] : [1]
+    for_each = var.enable_ses_email || var.enable_resend_email ? [] : [1]
     content {
       email_sending_account = "COGNITO_DEFAULT"
+    }
+  }
+
+  dynamic "lambda_config" {
+    for_each = var.enable_resend_email ? [1] : []
+    content {
+      custom_email_sender {
+        lambda_arn     = aws_lambda_function.resend_email[0].arn
+        lambda_version = "V1_0"
+      }
+      kms_key_id = aws_kms_key.cognito_email[0].arn
     }
   }
 

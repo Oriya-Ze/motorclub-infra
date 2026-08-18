@@ -146,9 +146,13 @@ module "cognito" {
   extra_oauth_callback_urls = ["${module.edge.frontend_url}/auth/callback"]
   extra_oauth_logout_urls   = [module.edge.frontend_url]
 
-  enable_ses_email         = var.enable_custom_domains
+  enable_ses_email         = var.enable_custom_domains && !var.enable_resend_email
+  enable_resend_email      = var.enable_custom_domains && var.enable_resend_email
+  resend_secret_name       = var.resend_secret_name
   email_domain             = var.domain_name
   from_email_address       = "accounts@${var.domain_name}"
+  from_name                = "MotorClub"
+  app_url                  = "https://${var.domain_name}"
   route53_hosted_zone_id   = local.route53_zone_id
   manage_route53_records   = var.manage_route53_records
 }
