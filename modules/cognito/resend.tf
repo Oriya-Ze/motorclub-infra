@@ -158,7 +158,7 @@ resource "aws_lambda_function" "resend_email" {
   memory_size   = 256
 
   filename         = "${path.module}/lambda/resend_email.zip"
-  source_code_hash = filebase64sha256("${path.module}/lambda/resend_email.zip")
+  source_code_hash = null_resource.resend_email_package[0].id
 
   environment {
     variables = {

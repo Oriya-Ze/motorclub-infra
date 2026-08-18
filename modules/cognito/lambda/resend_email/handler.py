@@ -11,23 +11,23 @@ import urllib.request
 
 import boto3
 from aws_encryption_sdk import CommitmentPolicy, EncryptionSDKClient
-from aws_encryption_sdk.key_providers.kms import StrictKmsMasterKeyProvider
+from aws_encryption_sdk.key_providers.kms import StrictAwsKmsMasterKeyProvider
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 _resend_api_key: str | None = None
 _encryption_client: EncryptionSDKClient | None = None
-_key_provider: StrictKmsMasterKeyProvider | None = None
+_key_provider: StrictAwsKmsMasterKeyProvider | None = None
 
 
-def _encryption() -> tuple[EncryptionSDKClient, StrictKmsMasterKeyProvider]:
+def _encryption() -> tuple[EncryptionSDKClient, StrictAwsKmsMasterKeyProvider]:
     global _encryption_client, _key_provider
     if _encryption_client is None:
         _encryption_client = EncryptionSDKClient(
             commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_ALLOW_DECRYPT
         )
-        _key_provider = StrictKmsMasterKeyProvider(
+        _key_provider = StrictAwsKmsMasterKeyProvider(
             key_ids=[os.environ["KMS_KEY_ARN"]]
         )
     return _encryption_client, _key_provider  # type: ignore[return-value]
