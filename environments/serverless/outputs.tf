@@ -69,6 +69,7 @@ output "frontend_build_env" {
   value = {
     VITE_API_URL        = "${module.lambda_api.api_url}/api/v1"
     VITE_MEDIA_BASE_URL = module.edge.media_url
+    VITE_TURNSTILE_SITE_KEY = var.turnstile_site_key != "" ? var.turnstile_site_key : null
   }
 }
 

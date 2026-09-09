@@ -20,6 +20,7 @@ data "aws_iam_policy_document" "lambda_s3_media" {
     ]
     resources = [
       "arn:aws:s3:::${var.media_bucket_name}/users/*",
+      "arn:aws:s3:::${var.media_bucket_name}/processed/*",
     ]
   }
 }
@@ -39,6 +40,9 @@ data "aws_iam_policy_document" "lambda_cognito" {
       "cognito-idp:ConfirmForgotPassword",
       "cognito-idp:ChangePassword",
       "cognito-idp:AdminGetUser",
+      "cognito-idp:AdminCreateUser",
+      "cognito-idp:AdminSetUserPassword",
+      "cognito-idp:AdminDeleteUser",
     ]
     resources = [var.cognito_user_pool_arn]
   }
@@ -67,20 +71,30 @@ locals {
       MEDIA_BASE_URL                    = var.media_base_url
       S3_PRESIGNED_URL_EXPIRY_SECONDS   = "300"
       MAX_IMAGE_UPLOAD_BYTES            = "10485760"
-      MAX_VIDEO_UPLOAD_BYTES            = "10485760"
+      MAX_VIDEO_UPLOAD_BYTES            = "157286400"
       UPLOAD_DIR                        = "/tmp/uploads"
       RATE_LIMIT_TABLE                  = aws_dynamodb_table.rate_limit.name
     },
-    var.auth_provider == "cognito" ? {
+    var.auth_provider == "cognito" ? merge({
       COGNITO_USER_POOL_ID  = var.cognito_user_pool_id
       COGNITO_CLIENT_ID     = var.cognito_client_id
       COGNITO_CLIENT_SECRET = var.cognito_client_secret
       COGNITO_DOMAIN        = var.cognito_domain != null ? var.cognito_domain : ""
-    } : {
+    }, var.resend_secret_arn != "" ? {
+      RESEND_SECRET_ARN  = var.resend_secret_arn
+      RESEND_FROM_EMAIL  = var.resend_from_email
+      RESEND_FROM_NAME   = var.resend_from_name
+      APP_URL            = var.app_url
+      APP_NAME           = "MotorClub"
+    } : {}) : {
       JWT_SECRET         = var.jwt_secret
       JWT_ALGORITHM      = "HS256"
       JWT_EXPIRE_MINUTES = "1440"
-    }
+    },
+    var.turnstile_site_key != "" && var.turnstile_secret_key != "" ? {
+      TURNSTILE_SITE_KEY   = var.turnstile_site_key
+      TURNSTILE_SECRET_KEY = var.turnstile_secret_key
+    } : {}
   )
 }
 
@@ -149,6 +163,27 @@ resource "aws_iam_role_policy" "lambda_cognito" {
   name   = "${local.name_prefix}-api-lambda-cognito"
   role   = aws_iam_role.lambda.id
   policy = data.aws_iam_policy_document.lambda_cognito[0].json
+}
+
+data "aws_iam_policy_document" "lambda_resend" {
+  count = var.auth_provider == "cognito" && var.resend_secret_arn != "" ? 1 : 0
+
+  statement {
+    sid    = "ResendSecretRead"
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue",
+    ]
+    resources = [var.resend_secret_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "lambda_resend" {
+  count = var.auth_provider == "cognito" && var.resend_secret_arn != "" ? 1 : 0
+
+  name   = "${local.name_prefix}-api-lambda-resend"
+  role   = aws_iam_role.lambda.id
+  policy = data.aws_iam_policy_document.lambda_resend[0].json
 }
 
 resource "aws_cloudwatch_log_group" "api" {

@@ -170,7 +170,7 @@ resource "aws_ecs_task_definition" "api" {
         { name = "MEDIA_BASE_URL", value = var.media_base_url },
         { name = "S3_PRESIGNED_URL_EXPIRY_SECONDS", value = "300" },
         { name = "MAX_IMAGE_UPLOAD_BYTES", value = "10485760" },
-        { name = "MAX_VIDEO_UPLOAD_BYTES", value = "10485760" },
+        { name = "MAX_VIDEO_UPLOAD_BYTES", value = "157286400" },
         { name = "UPLOAD_DIR", value = "/tmp/uploads" },
       ]
       secrets = [

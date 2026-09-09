@@ -18,6 +18,11 @@ variable "lambda_image_tag" {
   type        = string
 }
 
+variable "transcode_lambda_image_tag" {
+  description = "Immutable media transcode Lambda container image tag"
+  type        = string
+}
+
 variable "database_url" {
   description = "Neon PostgreSQL URL (postgresql+asyncpg://...?ssl=require)"
   type        = string
@@ -113,6 +118,19 @@ variable "google_oauth_client_id" {
 
 variable "google_oauth_client_secret" {
   description = "Google OAuth client secret for Cognito Google sign-in"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "turnstile_site_key" {
+  description = "Cloudflare Turnstile site key for auth CAPTCHA (free tier). Leave empty to disable."
+  type        = string
+  default     = ""
+}
+
+variable "turnstile_secret_key" {
+  description = "Cloudflare Turnstile secret key"
   type        = string
   default     = ""
   sensitive   = true

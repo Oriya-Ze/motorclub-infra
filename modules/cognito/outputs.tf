@@ -40,6 +40,10 @@ output "resend_email_lambda_arn" {
   value = var.enable_resend_email ? aws_lambda_function.resend_email[0].arn : ""
 }
 
+output "resend_secret_arn" {
+  value = var.enable_resend_email ? data.aws_secretsmanager_secret.resend[0].arn : ""
+}
+
 output "cognito_email_kms_key_arn" {
   value = var.enable_resend_email ? aws_kms_key.cognito_email[0].arn : ""
 }

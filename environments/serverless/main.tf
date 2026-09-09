@@ -61,6 +61,44 @@ resource "aws_ecr_lifecycle_policy" "api" {
   })
 }
 
+resource "aws_ecr_repository" "media_transcode" {
+  name                 = "${var.project_name}-media-transcode-lambda"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Project     = "MotorClub"
+    Environment = var.environment
+    ManagedBy   = "Terraform"
+    Component   = "media-transcode"
+  }
+}
+
+resource "aws_ecr_lifecycle_policy" "media_transcode" {
+  repository = aws_ecr_repository.media_transcode.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep last 5 images"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 5
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_acm_certificate" "api" {
   count = var.enable_custom_domains ? 1 : 0
 
@@ -180,6 +218,23 @@ module "lambda_api" {
   api_certificate_arn = var.enable_custom_domains ? (
     var.manage_route53_records ? aws_acm_certificate_validation.api[0].certificate_arn : aws_acm_certificate.api[0].arn
   ) : null
+  resend_secret_arn  = var.enable_custom_domains && var.enable_resend_email ? module.cognito.resend_secret_arn : ""
+  resend_from_email  = "accounts@${var.domain_name}"
+  resend_from_name   = "MotorClub"
+  app_url            = "https://${var.domain_name}"
+  turnstile_site_key   = var.turnstile_site_key
+  turnstile_secret_key = var.turnstile_secret_key
+}
+
+module "media_transcode" {
+  source = "../../modules/media_transcode"
+
+  project_name      = var.project_name
+  environment       = var.environment
+  media_bucket_name = module.storage.media_bucket_name
+  media_bucket_arn  = module.storage.media_bucket_arn
+  database_url      = var.database_url
+  image_uri         = "${aws_ecr_repository.media_transcode.repository_url}:${var.transcode_lambda_image_tag}"
 }
 
 resource "aws_route53_record" "api" {

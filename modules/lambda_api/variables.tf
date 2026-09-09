@@ -116,3 +116,37 @@ variable "api_certificate_arn" {
   type        = string
   default     = null
 }
+
+variable "resend_secret_arn" {
+  description = "Secrets Manager ARN for Resend API key (signup verification emails)"
+  type        = string
+  default     = ""
+}
+
+variable "resend_from_email" {
+  type    = string
+  default = ""
+}
+
+variable "resend_from_name" {
+  type    = string
+  default = "MotorClub"
+}
+
+variable "app_url" {
+  type    = string
+  default = ""
+}
+
+variable "turnstile_site_key" {
+  description = "Cloudflare Turnstile site key (public). Leave empty to disable CAPTCHA."
+  type        = string
+  default     = ""
+}
+
+variable "turnstile_secret_key" {
+  description = "Cloudflare Turnstile secret key. Required when turnstile_site_key is set."
+  type        = string
+  default     = ""
+  sensitive   = true
+}

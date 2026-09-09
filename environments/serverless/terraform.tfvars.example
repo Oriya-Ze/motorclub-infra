@@ -4,7 +4,8 @@
 aws_region         = "eu-central-1"
 project_name       = "motorclub"
 environment        = "serverless"
-lambda_image_tag   = "REPLACE_WITH_GIT_SHA"
+lambda_image_tag            = "REPLACE_WITH_GIT_SHA"
+transcode_lambda_image_tag  = "REPLACE_WITH_GIT_SHA"
 
 # Neon connection string (asyncpg + SSL required):
 # postgresql+asyncpg://USER:PASSWORD@HOST/DB?ssl=require
@@ -20,6 +21,10 @@ allow_broad_media_cors = true
 # cognito_domain_prefix = "motorclub-serverless"
 # google_oauth_client_id     = "REPLACE.apps.googleusercontent.com"
 # google_oauth_client_secret = "REPLACE"
+
+# Cloudflare Turnstile CAPTCHA (free) — https://dash.cloudflare.com/?to=/:account/turnstile
+# turnstile_site_key   = "REPLACE"
+# turnstile_secret_key = "REPLACE"
 #
 # In Google Cloud Console, add this Authorized redirect URI:
 # https://motorclub-serverless.auth.eu-central-1.amazoncognito.com/oauth2/idpresponse
