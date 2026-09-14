@@ -181,8 +181,12 @@ module "cognito" {
   cognito_domain_prefix     = var.cognito_domain_prefix
   google_client_id          = var.google_oauth_client_id
   google_client_secret      = var.google_oauth_client_secret
-  extra_oauth_callback_urls = ["${module.edge.frontend_url}/auth/callback"]
-  extra_oauth_logout_urls   = [module.edge.frontend_url]
+  extra_oauth_callback_urls = var.enable_custom_domains ? [
+    for domain in var.frontend_custom_domains : "https://${domain}/auth/callback"
+  ] : ["${module.edge.frontend_url}/auth/callback"]
+  extra_oauth_logout_urls = var.enable_custom_domains ? [
+    for domain in var.frontend_custom_domains : "https://${domain}"
+  ] : [module.edge.frontend_url]
 
   enable_ses_email         = var.enable_custom_domains && !var.enable_resend_email
   enable_resend_email      = var.enable_custom_domains && var.enable_resend_email
@@ -190,7 +194,7 @@ module "cognito" {
   email_domain             = var.domain_name
   from_email_address       = "accounts@${var.domain_name}"
   from_name                = "MotorClub"
-  app_url                  = "https://${var.domain_name}"
+  app_url                  = module.edge.frontend_url
   route53_hosted_zone_id   = local.route53_zone_id
   manage_route53_records   = var.manage_route53_records
 }
@@ -221,7 +225,7 @@ module "lambda_api" {
   resend_secret_arn  = var.enable_custom_domains && var.enable_resend_email ? module.cognito.resend_secret_arn : ""
   resend_from_email  = "accounts@${var.domain_name}"
   resend_from_name   = "MotorClub"
-  app_url            = "https://${var.domain_name}"
+  app_url            = module.edge.frontend_url
   turnstile_site_key   = var.turnstile_site_key
   turnstile_secret_key = var.turnstile_secret_key
 }

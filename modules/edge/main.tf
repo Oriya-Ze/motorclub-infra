@@ -10,8 +10,25 @@ locals {
   frontend_aliases = var.enable_custom_domains ? var.frontend_custom_domains : []
   media_alias      = var.enable_custom_domains && var.media_custom_domain != null ? [var.media_custom_domain] : []
 
-  frontend_url = var.enable_custom_domains && length(var.frontend_custom_domains) > 0 ? "https://${var.frontend_custom_domains[0]}" : "https://${aws_cloudfront_distribution.frontend.domain_name}"
+  www_host = "www.${var.domain_name}"
+  canonical_frontend_host = var.enable_custom_domains && length(var.frontend_custom_domains) > 0 ? (
+    contains(var.frontend_custom_domains, local.www_host) ? local.www_host : var.frontend_custom_domains[0]
+  ) : ""
+  frontend_url = var.enable_custom_domains && local.canonical_frontend_host != "" ? "https://${local.canonical_frontend_host}" : "https://${aws_cloudfront_distribution.frontend.domain_name}"
   media_url    = var.enable_custom_domains && var.media_custom_domain != null ? "https://${var.media_custom_domain}" : "https://${aws_cloudfront_distribution.media.domain_name}"
+}
+
+resource "aws_cloudfront_function" "redirect_www" {
+  count = var.enable_custom_domains ? 1 : 0
+
+  name    = "${local.name_prefix}-redirect-www"
+  runtime = "cloudfront-js-2.0"
+  comment = "Redirect ${var.domain_name} to ${local.www_host}"
+  publish = true
+  code = templatefile("${path.module}/functions/redirect-www.js", {
+    apex_host = var.domain_name
+    www_host  = local.www_host
+  })
 }
 
 resource "aws_cloudfront_origin_access_control" "frontend" {
@@ -96,6 +113,14 @@ resource "aws_cloudfront_distribution" "frontend" {
     forwarded_values {
       query_string = false
       cookies { forward = "none" }
+    }
+
+    dynamic "function_association" {
+      for_each = var.enable_custom_domains ? [1] : []
+      content {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.redirect_www[0].arn
+      }
     }
   }
 
