@@ -118,5 +118,40 @@ resource "aws_s3_bucket_notification" "media_video_upload" {
     filter_suffix       = ".webm"
   }
 
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.transcode.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "users/"
+    filter_suffix       = ".jpg"
+  }
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.transcode.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "users/"
+    filter_suffix       = ".jpeg"
+  }
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.transcode.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "users/"
+    filter_suffix       = ".png"
+  }
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.transcode.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "users/"
+    filter_suffix       = ".webp"
+  }
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.transcode.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "users/"
+    filter_suffix       = ".gif"
+  }
+
   depends_on = [aws_lambda_permission.allow_s3]
 }
