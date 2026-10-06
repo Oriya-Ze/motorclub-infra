@@ -57,6 +57,23 @@ resource "aws_iam_role_policy" "transcode" {
   policy = data.aws_iam_policy_document.transcode.json
 }
 
+# A separate policy, matching the one first created by hand and then imported.
+resource "aws_iam_role_policy" "transcode_rekognition" {
+  name = "${local.name_prefix}-media-transcode-rekognition"
+  role = aws_iam_role.transcode.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "DetectModerationLabels"
+        Effect   = "Allow"
+        Action   = "rekognition:DetectModerationLabels"
+        Resource = "*"
+      },
+    ]
+  })
+}
+
 resource "aws_cloudwatch_log_group" "transcode" {
   name              = "/aws/lambda/${local.name_prefix}-media-transcode"
   retention_in_days = 14
@@ -64,13 +81,18 @@ resource "aws_cloudwatch_log_group" "transcode" {
 }
 
 resource "aws_lambda_function" "transcode" {
-  function_name                  = "${local.name_prefix}-media-transcode"
-  role                           = aws_iam_role.transcode.arn
-  package_type                   = "Image"
-  image_uri                      = var.image_uri
-  memory_size                    = var.memory_size
-  timeout                        = var.timeout
-  architectures                  = ["x86_64"]
+  # Images are deployed with the AWS CLI from a commit tag. Terraform must not roll them back.
+  lifecycle {
+    ignore_changes = [image_uri]
+  }
+
+  function_name = "${local.name_prefix}-media-transcode"
+  role          = aws_iam_role.transcode.arn
+  package_type  = "Image"
+  image_uri     = var.image_uri
+  memory_size   = var.memory_size
+  timeout       = var.timeout
+  architectures = ["x86_64"]
   ephemeral_storage {
     size = 10240
   }

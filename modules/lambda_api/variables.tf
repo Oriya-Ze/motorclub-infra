@@ -74,6 +74,12 @@ variable "media_base_url" {
   type = string
 }
 
+variable "media_distribution_id" {
+  description = "CloudFront distribution whose cache is cleared when a public image is removed or restored"
+  type        = string
+  default     = ""
+}
+
 variable "memory_size" {
   type    = number
   default = 512
@@ -87,11 +93,6 @@ variable "timeout" {
 variable "log_retention_days" {
   type    = number
   default = 14
-}
-
-variable "app_version" {
-  type    = string
-  default = "serverless"
 }
 
 variable "tags" {

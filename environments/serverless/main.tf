@@ -13,6 +13,10 @@ locals {
 resource "aws_route53_zone" "main" {
   count = var.create_route53_zone ? 1 : 0
 
+  lifecycle {
+    prevent_destroy = true
+  }
+
   name = var.domain_name
 
   tags = {
@@ -27,6 +31,10 @@ resource "aws_ecr_repository" "api" {
   name                 = "${var.project_name}-api-lambda"
   image_tag_mutability = "MUTABLE"
   force_delete         = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
 
   image_scanning_configuration {
     scan_on_push = true
@@ -65,6 +73,10 @@ resource "aws_ecr_repository" "media_transcode" {
   name                 = "${var.project_name}-media-transcode-lambda"
   image_tag_mutability = "MUTABLE"
   force_delete         = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
 
   image_scanning_configuration {
     scan_on_push = true
@@ -176,11 +188,11 @@ module "edge" {
 module "cognito" {
   source = "../../modules/cognito"
 
-  project_name              = var.project_name
-  environment               = var.environment
-  cognito_domain_prefix     = var.cognito_domain_prefix
-  google_client_id          = var.google_oauth_client_id
-  google_client_secret      = var.google_oauth_client_secret
+  project_name          = var.project_name
+  environment           = var.environment
+  cognito_domain_prefix = var.cognito_domain_prefix
+  google_client_id      = var.google_oauth_client_id
+  google_client_secret  = var.google_oauth_client_secret
   extra_oauth_callback_urls = var.enable_custom_domains ? [
     for domain in var.frontend_custom_domains : "https://${domain}/auth/callback"
   ] : ["${module.edge.frontend_url}/auth/callback"]
@@ -188,44 +200,45 @@ module "cognito" {
     for domain in var.frontend_custom_domains : "https://${domain}"
   ] : [module.edge.frontend_url]
 
-  enable_ses_email         = var.enable_custom_domains && !var.enable_resend_email
-  enable_resend_email      = var.enable_custom_domains && var.enable_resend_email
-  resend_secret_name       = var.resend_secret_name
-  email_domain             = var.domain_name
-  from_email_address       = "accounts@${var.domain_name}"
-  from_name                = "MotorClub"
-  app_url                  = module.edge.frontend_url
-  route53_hosted_zone_id   = local.route53_zone_id
-  manage_route53_records   = var.manage_route53_records
+  enable_ses_email       = var.enable_custom_domains && !var.enable_resend_email
+  enable_resend_email    = var.enable_custom_domains && var.enable_resend_email
+  resend_secret_name     = var.resend_secret_name
+  email_domain           = var.domain_name
+  from_email_address     = "accounts@${var.domain_name}"
+  from_name              = "MotorClub"
+  app_url                = module.edge.frontend_url
+  route53_hosted_zone_id = local.route53_zone_id
+  manage_route53_records = var.manage_route53_records
 }
 
 module "lambda_api" {
   source = "../../modules/lambda_api"
 
-  project_name         = var.project_name
-  environment          = var.environment
-  auth_provider        = "cognito"
-  image_uri            = "${aws_ecr_repository.api.repository_url}:${var.lambda_image_tag}"
-  database_url         = var.database_url
-  cognito_user_pool_id = module.cognito.user_pool_id
-  cognito_user_pool_arn = module.cognito.user_pool_arn
-  cognito_client_id    = module.cognito.client_id
-  cognito_client_secret = module.cognito.client_secret
-  cognito_domain       = module.cognito.cognito_domain
-  backend_cors_origins = local.frontend_cors_origins != null ? local.frontend_cors_origins : module.edge.frontend_url
-  media_bucket_name    = module.storage.media_bucket_name
-  media_base_url       = module.edge.media_url
-  memory_size          = var.lambda_memory_size
-  timeout              = var.lambda_timeout
+  project_name             = var.project_name
+  environment              = var.environment
+  auth_provider            = "cognito"
+  image_uri                = "${aws_ecr_repository.api.repository_url}:${var.lambda_image_tag}"
+  database_url             = var.database_url
+  cognito_user_pool_id     = module.cognito.user_pool_id
+  cognito_user_pool_arn    = module.cognito.user_pool_arn
+  cognito_client_id        = module.cognito.client_id
+  cognito_client_secret    = module.cognito.client_secret
+  cognito_domain           = module.cognito.cognito_domain
+  backend_cors_origins     = local.frontend_cors_origins != null ? local.frontend_cors_origins : module.edge.frontend_url
+  media_bucket_name        = module.storage.media_bucket_name
+  media_base_url           = module.edge.media_url
+  media_distribution_id    = module.edge.media_distribution_id
+  memory_size              = var.lambda_memory_size
+  timeout                  = var.lambda_timeout
   api_custom_domain        = var.enable_custom_domains ? var.api_custom_domain : null
   enable_api_custom_domain = var.enable_custom_domains
   api_certificate_arn = var.enable_custom_domains ? (
     var.manage_route53_records ? aws_acm_certificate_validation.api[0].certificate_arn : aws_acm_certificate.api[0].arn
   ) : null
-  resend_secret_arn  = var.enable_custom_domains && var.enable_resend_email ? module.cognito.resend_secret_arn : ""
-  resend_from_email  = "accounts@${var.domain_name}"
-  resend_from_name   = "MotorClub"
-  app_url            = module.edge.frontend_url
+  resend_secret_arn    = var.enable_custom_domains && var.enable_resend_email ? module.cognito.resend_secret_arn : ""
+  resend_from_email    = "accounts@${var.domain_name}"
+  resend_from_name     = "MotorClub"
+  app_url              = module.edge.frontend_url
   turnstile_site_key   = var.turnstile_site_key
   turnstile_secret_key = var.turnstile_secret_key
 }

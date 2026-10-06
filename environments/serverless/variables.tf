@@ -138,7 +138,7 @@ variable "turnstile_secret_key" {
 
 check "route53_hosted_zone_required" {
   assert {
-    condition = !var.manage_route53_records || var.create_route53_zone || (var.route53_hosted_zone_id != null && var.route53_hosted_zone_id != "")
+    condition     = !var.manage_route53_records || var.create_route53_zone || (var.route53_hosted_zone_id != null && var.route53_hosted_zone_id != "")
     error_message = "Set create_route53_zone=true or route53_hosted_zone_id when manage_route53_records is true."
   }
 }

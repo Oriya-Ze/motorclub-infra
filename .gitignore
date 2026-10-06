@@ -13,3 +13,11 @@ override.tf.json
 *_override.tf.json
 .terraform.tfstate.lock.info
 scripts/**
+
+# Saved plans and local backend settings
+*.tfplan
+tfplan
+backend.hcl
+
+# Editor swap files can hold copies of terraform.tfvars
+*.swp

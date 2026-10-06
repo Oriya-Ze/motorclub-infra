@@ -23,7 +23,7 @@ resource "aws_cloudfront_function" "redirect_www" {
 
   name    = "${local.name_prefix}-redirect-www"
   runtime = "cloudfront-js-2.0"
-  comment = "Redirect ${var.domain_name} to ${local.www_host}"
+  comment = "Redirect apex to www, except service worker files"
   publish = true
   code = templatefile("${path.module}/functions/redirect-www.js", {
     apex_host = var.domain_name
@@ -90,7 +90,46 @@ resource "aws_acm_certificate_validation" "cloudfront" {
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
+# Browser security headers for the site. No Content-Security-Policy yet: the app loads Google
+# Fonts, media, and API calls from other hosts, and a CSP needs testing against all of them.
+resource "aws_cloudfront_response_headers_policy" "frontend_security" {
+  name    = "${local.name_prefix}-frontend-security"
+  comment = "HSTS, nosniff, no framing, referrer and permissions policy for the site"
+
+  security_headers_config {
+    strict_transport_security {
+      access_control_max_age_sec = 31536000
+      include_subdomains         = true
+      preload                    = false
+      override                   = true
+    }
+    content_type_options {
+      override = true
+    }
+    frame_options {
+      frame_option = "DENY"
+      override     = true
+    }
+    referrer_policy {
+      referrer_policy = "strict-origin-when-cross-origin"
+      override        = true
+    }
+  }
+
+  custom_headers_config {
+    items {
+      header   = "Permissions-Policy"
+      value    = "geolocation=(), microphone=(), payment=(), usb=()"
+      override = true
+    }
+  }
+}
+
 resource "aws_cloudfront_distribution" "frontend" {
+  lifecycle {
+    prevent_destroy = true
+  }
+
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
@@ -104,11 +143,12 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   default_cache_behavior {
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "frontend-s3"
-    viewer_protocol_policy = "redirect-to-https"
-    compress               = true
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = "frontend-s3"
+    viewer_protocol_policy     = "redirect-to-https"
+    compress                   = true
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.frontend_security.id
 
     forwarded_values {
       query_string = false
@@ -157,6 +197,10 @@ resource "aws_cloudfront_distribution" "frontend" {
 }
 
 resource "aws_cloudfront_distribution" "media" {
+  lifecycle {
+    prevent_destroy = true
+  }
+
   enabled         = true
   is_ipv6_enabled = true
   comment         = "${local.name_prefix} media"
@@ -239,6 +283,17 @@ data "aws_iam_policy_document" "media_bucket" {
       variable = "AWS:SourceArn"
       values   = [aws_cloudfront_distribution.media.arn]
     }
+  }
+
+  statement {
+    sid    = "DenyCloudFrontPrivateMedia"
+    effect = "Deny"
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+    actions   = ["s3:GetObject"]
+    resources = ["${var.media_bucket_arn}/users/*/private/*"]
   }
 }
 

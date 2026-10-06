@@ -180,10 +180,10 @@ resource "aws_lambda_permission" "cognito_resend_email" {
   count = var.enable_resend_email ? 1 : 0
 
   statement_id  = "AllowCognitoInvoke"
-  action          = "lambda:InvokeFunction"
-  function_name   = aws_lambda_function.resend_email[0].function_name
-  principal       = "cognito-idp.amazonaws.com"
-  source_arn      = aws_cognito_user_pool.main.arn
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.resend_email[0].function_name
+  principal     = "cognito-idp.amazonaws.com"
+  source_arn    = aws_cognito_user_pool.main.arn
 }
 
 resource "aws_cloudwatch_log_group" "resend_email" {

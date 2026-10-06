@@ -50,7 +50,7 @@ output "cognito_email_kms_key_arn" {
 
 output "cognito_hosted_ui_base_url" {
   description = "Base URL for Cognito Hosted UI / OAuth endpoints"
-  value = local.enable_google_oauth ? "https://${aws_cognito_user_pool_domain.main[0].domain}.auth.${data.aws_region.current.id}.amazoncognito.com" : ""
+  value       = local.enable_google_oauth ? "https://${aws_cognito_user_pool_domain.main[0].domain}.auth.${data.aws_region.current.id}.amazoncognito.com" : ""
 }
 
 data "aws_region" "current" {}

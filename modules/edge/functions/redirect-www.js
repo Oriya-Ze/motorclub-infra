@@ -6,6 +6,16 @@ function handler(event) {
     return request;
   }
 
+  var uri = request.uri;
+  if (
+    uri === "/sw.js" ||
+    uri === "/sw-redirect.js" ||
+    uri === "/registerSW.js" ||
+    uri.indexOf("/workbox-") === 0
+  ) {
+    return request;
+  }
+
   var qs = [];
   var querystring = request.querystring;
   Object.keys(querystring).forEach(function (key) {

@@ -40,6 +40,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "frontend" {
 resource "aws_s3_bucket" "media" {
   bucket = local.media_bucket
 
+  lifecycle {
+    prevent_destroy = true
+  }
+
   tags = merge(local.common_tags, {
     Name = local.media_bucket
   })

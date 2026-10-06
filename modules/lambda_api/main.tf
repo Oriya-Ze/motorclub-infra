@@ -8,6 +8,43 @@ data "aws_iam_policy_document" "lambda_assume" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
+data "aws_iam_policy_document" "lambda_rekognition" {
+  statement {
+    sid       = "DetectModerationLabels"
+    effect    = "Allow"
+    actions   = ["rekognition:DetectModerationLabels"]
+    resources = ["*"]
+  }
+}
+
+# Named after the role because it was first created by hand under that name and then imported.
+resource "aws_iam_role_policy" "lambda_rekognition" {
+  name   = "${aws_iam_role.lambda.name}-rekognition"
+  role   = aws_iam_role.lambda.id
+  policy = data.aws_iam_policy_document.lambda_rekognition.json
+}
+
+data "aws_iam_policy_document" "lambda_media_invalidation" {
+  count = var.media_distribution_id != "" ? 1 : 0
+
+  statement {
+    sid       = "InvalidateRemovedMedia"
+    effect    = "Allow"
+    actions   = ["cloudfront:CreateInvalidation"]
+    resources = ["arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${var.media_distribution_id}"]
+  }
+}
+
+resource "aws_iam_role_policy" "lambda_media_invalidation" {
+  count = var.media_distribution_id != "" ? 1 : 0
+
+  name   = "${local.name_prefix}-api-lambda-media-invalidation"
+  role   = aws_iam_role.lambda.id
+  policy = data.aws_iam_policy_document.lambda_media_invalidation[0].json
+}
+
 data "aws_iam_policy_document" "lambda_s3_media" {
   statement {
     sid    = "MediaObjectAccess"
@@ -59,34 +96,35 @@ locals {
 
   lambda_env = merge(
     {
-      ENVIRONMENT                       = var.environment
-      LOG_LEVEL                         = "INFO"
-      APP_VERSION                       = var.app_version
-      SERVICE_NAME                      = "motorclub-api"
-      AUTH_PROVIDER                     = var.auth_provider
-      DATABASE_URL                      = var.database_url
-      BACKEND_CORS_ORIGINS              = var.backend_cors_origins
-      MEDIA_STORAGE_PROVIDER            = "s3"
-      S3_MEDIA_BUCKET                   = var.media_bucket_name
-      MEDIA_BASE_URL                    = var.media_base_url
-      S3_PRESIGNED_URL_EXPIRY_SECONDS   = "300"
-      MAX_IMAGE_UPLOAD_BYTES            = "10485760"
-      MAX_VIDEO_UPLOAD_BYTES            = "157286400"
-      UPLOAD_DIR                        = "/tmp/uploads"
-      RATE_LIMIT_TABLE                  = aws_dynamodb_table.rate_limit.name
+      ENVIRONMENT                     = var.environment
+      LOG_LEVEL                       = "INFO"
+      SERVICE_NAME                    = "motorclub-api"
+      AUTH_PROVIDER                   = var.auth_provider
+      DATABASE_URL                    = var.database_url
+      BACKEND_CORS_ORIGINS            = var.backend_cors_origins
+      MEDIA_STORAGE_PROVIDER          = "s3"
+      S3_MEDIA_BUCKET                 = var.media_bucket_name
+      MEDIA_BASE_URL                  = var.media_base_url
+      S3_PRESIGNED_URL_EXPIRY_SECONDS = "300"
+      MAX_IMAGE_UPLOAD_BYTES          = "10485760"
+      MAX_VIDEO_UPLOAD_BYTES          = "157286400"
+      REKOGNITION_MODE                = "aws"
+      MEDIA_DISTRIBUTION_ID           = var.media_distribution_id
+      UPLOAD_DIR                      = "/tmp/uploads"
+      RATE_LIMIT_TABLE                = aws_dynamodb_table.rate_limit.name
     },
     var.auth_provider == "cognito" ? merge({
       COGNITO_USER_POOL_ID  = var.cognito_user_pool_id
       COGNITO_CLIENT_ID     = var.cognito_client_id
       COGNITO_CLIENT_SECRET = var.cognito_client_secret
       COGNITO_DOMAIN        = var.cognito_domain != null ? var.cognito_domain : ""
-    }, var.resend_secret_arn != "" ? {
-      RESEND_SECRET_ARN  = var.resend_secret_arn
-      RESEND_FROM_EMAIL  = var.resend_from_email
-      RESEND_FROM_NAME   = var.resend_from_name
-      APP_URL            = var.app_url
-      APP_NAME           = "MotorClub"
-    } : {}) : {
+      }, var.resend_secret_arn != "" ? {
+      RESEND_SECRET_ARN = var.resend_secret_arn
+      RESEND_FROM_EMAIL = var.resend_from_email
+      RESEND_FROM_NAME  = var.resend_from_name
+      APP_URL           = var.app_url
+      APP_NAME          = "MotorClub"
+      } : {}) : {
       JWT_SECRET         = var.jwt_secret
       JWT_ALGORITHM      = "HS256"
       JWT_EXPIRE_MINUTES = "1440"
@@ -196,6 +234,11 @@ resource "aws_cloudwatch_log_group" "api" {
 }
 
 resource "aws_lambda_function" "api" {
+  # Images are deployed with the AWS CLI from a commit tag. Terraform must not roll them back.
+  lifecycle {
+    ignore_changes = [image_uri]
+  }
+
   function_name = "${local.name_prefix}-api"
   role          = aws_iam_role.lambda.arn
   package_type  = "Image"

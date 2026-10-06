@@ -1,8 +1,8 @@
 locals {
-  name_prefix          = "${var.project_name}-${var.environment}"
-  enable_google_oauth  = var.google_client_id != "" && var.google_client_secret != ""
-  oauth_callback_urls  = distinct(concat(var.oauth_callback_urls, var.extra_oauth_callback_urls))
-  oauth_logout_urls    = distinct(concat(var.oauth_logout_urls, var.extra_oauth_logout_urls))
+  name_prefix         = "${var.project_name}-${var.environment}"
+  enable_google_oauth = var.google_client_id != "" && var.google_client_secret != ""
+  oauth_callback_urls = distinct(concat(var.oauth_callback_urls, var.extra_oauth_callback_urls))
+  oauth_logout_urls   = distinct(concat(var.oauth_logout_urls, var.extra_oauth_logout_urls))
   common_tags = merge(var.tags, {
     Project     = "MotorClub"
     Environment = var.environment
@@ -12,7 +12,14 @@ locals {
 }
 
 resource "aws_cognito_user_pool" "main" {
+  lifecycle {
+    prevent_destroy = true
+  }
+
   name = "${local.name_prefix}-users"
+
+  # AWS refuses to delete the pool while this is on, on top of Terraform's prevent_destroy.
+  deletion_protection = "ACTIVE"
 
   username_attributes      = ["email"]
   auto_verified_attributes = ["email"]
