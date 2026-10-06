@@ -6,10 +6,9 @@ import base64
 import json
 import logging
 import os
-import urllib.error
-import urllib.request
 
 import boto3
+import httpx
 from aws_encryption_sdk import CommitmentPolicy, EncryptionSDKClient
 from aws_encryption_sdk.key_providers.kms import StrictAwsKmsMasterKeyProvider
 
@@ -109,32 +108,28 @@ def _email_content(trigger_source: str, code: str) -> tuple[str, str]:
 def _send_resend(to_email: str, subject: str, html: str) -> None:
     from_name = os.environ.get("FROM_NAME", "MotorClub")
     from_email = os.environ["FROM_EMAIL"]
-    payload = json.dumps(
-        {
-            "from": f"{from_name} <{from_email}>",
-            "to": [to_email],
-            "subject": subject,
-            "html": html,
-        }
-    ).encode("utf-8")
+    payload = {
+        "from": f"{from_name} <{from_email}>",
+        "to": [to_email],
+        "subject": subject,
+        "html": html,
+    }
 
-    req = urllib.request.Request(
-        "https://api.resend.com/emails",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {_resend_api_key()}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            body = resp.read().decode("utf-8")
-            logger.info("Resend sent status=%s body=%s", resp.status, body[:200])
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        logger.error("Resend HTTP %s: %s", exc.code, detail)
-        raise RuntimeError(f"Resend API error {exc.code}") from exc
+    with httpx.Client(timeout=15.0) as client:
+        response = client.post(
+            "https://api.resend.com/emails",
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {_resend_api_key()}",
+                "Content-Type": "application/json",
+                "User-Agent": "MotorClub-Cognito-Email/1.0",
+            },
+        )
+
+    if response.status_code >= 400:
+        logger.error("Resend HTTP %s: %s", response.status_code, response.text[:500])
+        raise RuntimeError(f"Resend API error {response.status_code}")
+    logger.info("Resend sent status=%s body=%s", response.status_code, response.text[:200])
 
 
 def handler(event, context):
